@@ -1,0 +1,17 @@
+; Copyright (c) 2025-2026 Andrew (dreamyfx)
+; MoonOS 1.0.0 x86_64 2026
+; This software is released under the GNU Affero General Public License v3.0. See LICENSE file for details.
+; This header should be maintained in any file it is present in, as per the AGPL license terms.
+bits 64
+section .text
+global _start
+extern main
+
+_start:
+    xor rbp, rbp
+    xor rdi, rdi
+    xor rsi, rsi
+    call main
+    mov rdi, rax
+    mov rax, 0
+    syscall

@@ -1,0 +1,58 @@
+name: Alpha Build
+on:
+  push:
+    branches:
+      - 'main'
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            make nasm xorriso curl git tar
+          curl -sL https://github.com/xpack-dev-tools/gcc-xpack/releases/download/v14.2.0-2/xpack-gcc-14.2.0-2-linux-x64.tar.gz \
+            | sudo tar -xz -C /opt
+          sudo ln -sf /opt/xpack-gcc-14.2.0-2/bin/x86_64-elf-gcc /usr/local/bin/x86_64-elf-gcc
+          sudo ln -sf /opt/xpack-gcc-14.2.0-2/bin/x86_64-elf-ld  /usr/local/bin/x86_64-elf-ld
+          sudo ln -sf /opt/xpack-gcc-14.2.0-2/bin/x86_64-elf-ar  /usr/local/bin/x86_64-elf-ar
+
+      - name: Build ISO
+        run: make -j4
+
+      - name: Update alpha tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa alpha -m "Alpha Build ${GITHUB_SHA}" "${GITHUB_SHA}"
+          git push origin refs/tags/alpha --force
+
+      - name: Prepare release metadata
+        id: metadata
+        run: |
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: alpha
+          name: Alpha Build (${{ steps.metadata.outputs.short_sha }})
+          body: |
+            Built from commit:
+            - Full hash: `${{ github.sha }}`
+            - Short hash: `${{ steps.metadata.outputs.short_sha }}`
+          prerelease: true
+          make_latest: "false"
+          files: |
+            moonos.iso
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
