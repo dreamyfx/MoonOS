@@ -161,8 +161,6 @@ clean:
 
 # ── QEMU quick test ─────────────────────────────────────────────────────────
 OVMF     := /usr/share/ovmf/OVMF.fd
-# X offset of second monitor — laptop R4s is 1920px wide so AUO starts at 1920
-MONITOR2 ?= 1920
 
 run: $(ISO_MAIN)
 	@if [ -f "$(OVMF)" ]; then \
