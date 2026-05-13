@@ -1,116 +1,178 @@
-# Copyright (c) 2025-2026 Andrew (dreamyfx)
-# MoonOS 1.0.0 x86_64 2026
-# This software is released under the GNU Affero General Public License v3.0. See LICENSE file for details.
-# This header should be maintained in any file it is present in, as per the AGPL license terms.
+# MoonOS Makefile
+# Requirements: nasm, xorriso, gcc-x86-64-linux-gnu, binutils-x86-64-linux-gnu
 
-CC     = x86_64-elf-gcc
-LD     = x86_64-elf-ld
-NASM   = nasm
-XORRISO = xorriso
+CROSS   ?= x86_64-linux-gnu
+CC       = $(CROSS)-gcc
+AS       = nasm
+LD       = $(CROSS)-ld
+OBJCOPY  = $(CROSS)-objcopy
 
-BUILD  = build
-ISO    = moonos.iso
-KERNEL = $(BUILD)/moonos.elf
+CFLAGS   = -ffreestanding -fno-stack-protector -fno-pic -mno-red-zone \
+           -mno-mmx -mno-sse -mno-sse2 \
+           -mcmodel=kernel \
+           -O2 -Wall -Wextra \
+           -Isrc \
+           -std=c11 \
+           -DMOS_VERSION=\"$(VERSION)\" \
+           -DMOS_CODENAME=\"$(CODENAME)\" \
+           -DMOS_NAME=\"$(OS_NAME)\"
 
-CFLAGS = -g -O2 -std=gnu11 -ffreestanding -fno-stack-protector -fno-lto \
-         -fPIE -m64 -mno-red-zone -Wall -Wextra \
-         -Ikernel -Ikernel/boot -Ikernel/lib -Ikernel/cpu \
-         -Ikernel/mm -Ikernel/proc -Ikernel/syscall \
-         -Ikernel/io -Ikernel/acpi -Ikernel/fs -Ikernel/tty
+LDFLAGS  = -T src/linker.ld -nostdlib -z max-page-size=0x1000 \
+           --no-dynamic-linker
 
-LDFLAGS = -m elf_x86_64 -nostdlib -static -pie --no-dynamic-linker \
-          -z text -z max-page-size=0x1000 -T linker.ld
+ASFLAGS  = -f elf64
 
-NASMFLAGS = -f elf64
+VERSION    := $(shell grep '^version=' moonos.txt | cut -d= -f2)
+CODENAME   := $(shell grep '^codename=' moonos.txt | cut -d= -f2)
+OS_NAME    := $(shell grep '^name=' moonos.txt | cut -d= -f2)
 
-LIMINE_VER = 10.8.2
+LIMINE_DIR ?= limine
+ISO_MAIN   := dist/moonos.iso
+ISO_VER    := dist/moonos$(VERSION).iso
 
-K_C_SRCS = \
-  kernel/boot/kmain.c \
-  kernel/lib/kstring.c kernel/lib/console.c kernel/lib/panic.c \
-  kernel/cpu/gdt.c kernel/cpu/idt.c kernel/cpu/lapic.c \
-  kernel/mm/pmm.c kernel/mm/vmm.c kernel/mm/heap.c \
-  kernel/proc/process.c kernel/proc/elf.c \
-  kernel/syscall/syscall.c \
-  kernel/io/ps2.c kernel/io/serial.c kernel/io/rtc.c \
-  kernel/fs/vfs.c kernel/fs/tarfs.c kernel/fs/procfs.c \
-  kernel/tty/tty.c
+KERNEL_SRCS = src/boot.asm          \
+              src/kernel.c          \
+              src/commands.c        \
+              src/apps/system.c     \
+              src/apps/fscmds.c     \
+              src/apps/misc.c       \
+              src/apps/snake.c      \
+              src/fb.c              \
+              src/font.c            \
+              src/keyboard.c        \
+              src/mouse.c           \
+              src/gui.c             \
+              src/util.c            \
+              src/ramdisk.c         \
+              src/arcpad.c          \
+              src/ata.c             \
+              src/pci.c             \
+              src/progressbar.c
 
-K_ASM_SRCS = \
-  kernel/arch/boot.asm \
-  kernel/arch/gdt_asm.asm \
-  kernel/arch/interrupts.asm \
-  kernel/arch/syscall_entry.asm \
-  kernel/arch/process_asm.asm
+KERNEL_OBJS = $(patsubst src/%.asm, build/%.o, \
+              $(patsubst src/%.c,   build/%.o, \
+              $(patsubst src/apps/%.c, build/apps/%.o, \
+              $(patsubst src/net/%.c,  build/net/%.o, $(KERNEL_SRCS)))))
 
-K_C_OBJS   = $(patsubst %.c,  $(BUILD)/%.o, $(K_C_SRCS))
-K_ASM_OBJS = $(patsubst %.asm,$(BUILD)/%.o, $(K_ASM_SRCS))
-OBJ_ALL    = $(K_C_OBJS) $(K_ASM_OBJS)
+.PHONY: all clean iso run
 
-.PHONY: all clean run limine-setup
+all: $(ISO_MAIN)
 
-all: $(ISO)
+build:
+	mkdir -p build build/apps build/net dist
 
-$(BUILD)/%.o: %.c | $(BUILD)
-	@mkdir -p $(dir $@)
+src/logo_data.h: src/logo.png tools/png2c.py
+	python3 tools/png2c.py src/logo.png src/logo_data.h 280 280
+
+src/wallpaper_data.h: src/Library/wallpapers/moonosalpha.png tools/png2c.py
+	python3 tools/png2c.py src/Library/wallpapers/moonosalpha.png src/wallpaper_data.h 960 540 WALLPAPER
+
+src/cursor_data.h: src/Library/cursor/arrow.cur tools/cur2c.py
+	python3 tools/cur2c.py src/Library/cursor/arrow.cur src/cursor_data.h 32 32
+
+src/terminal_icon_data.h: tools/png2c.py
+	@if [ -f "src/Library/apps/terminal/Terminal.png" ]; then \
+		python3 tools/png2c.py src/Library/apps/terminal/Terminal.png $@ 64 64 TERMINAL_ICON; \
+	else \
+		python3 tools/png2c.py src/logo.png $@ 64 64 TERMINAL_ICON; \
+	fi
+
+src/arcpad_icon_data.h: tools/png2c.py
+	@if [ -f "src/Library/apps/arcpad/arcpad.png" ]; then \
+		python3 tools/png2c.py src/Library/apps/arcpad/arcpad.png $@ 64 64 ARCPAD_ICON; \
+	else \
+		python3 tools/png2c.py src/logo.png $@ 64 64 ARCPAD_ICON; \
+	fi
+
+src/settings_icon_data.h: tools/png2c.py
+	@for f in settings.png icon.png; do \
+		if [ -f "src/Library/apps/settings/$$f" ]; then \
+			python3 tools/png2c.py "src/Library/apps/settings/$$f" $@ 64 64 SETTINGS_ICON; \
+			exit 0; \
+		fi; \
+	done; \
+	python3 tools/png2c.py src/logo.png $@ 64 64 SETTINGS_ICON
+
+src/gui_font.h: src/Library/fonts/SF-Pro-Display-Regular.otf tools/otf2bitmapfont.py
+	python3 tools/otf2bitmapfont.py $< $@ 22
+
+GENERATED_HEADERS = src/logo_data.h src/wallpaper_data.h src/cursor_data.h src/terminal_icon_data.h src/arcpad_icon_data.h src/settings_icon_data.h src/gui_font.h
+
+build/apps/%.o: src/apps/%.c $(GENERATED_HEADERS) | build
+	$(CC) $(CFLAGS) -c $< -o $@
+	
+# No internet for now..
+# build/net/%.o: src/net/%.c $(GENERATED_HEADERS) | build
+#	$(CC) $(CFLAGS) -c $< -o $@
+
+build/%.o: src/%.c $(GENERATED_HEADERS) | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/%.o: %.asm | $(BUILD)
-	@mkdir -p $(dir $@)
-	$(NASM) $(NASMFLAGS) $< -o $@
+build/%.o: src/%.asm | build
+	$(AS) $(ASFLAGS) $< -o $@
 
-$(KERNEL): $(OBJ_ALL)
-	$(LD) $(LDFLAGS) -o $@ $^
-	@echo "Kernel built: $@"
-	$(MAKE) -C userland
-	@echo "Userland built."
+build/moonos.elf: $(KERNEL_OBJS)
+	$(LD) $(LDFLAGS) $^ -o $@
 
-$(BUILD)/initrd.tar: $(KERNEL)
-	@rm -rf $(BUILD)/initrd
-	@mkdir -p $(BUILD)/initrd/bin
-	@cp userland/bin/*.elf $(BUILD)/initrd/bin/ 2>/dev/null || true
-	@cd $(BUILD)/initrd && COPYFILE_DISABLE=1 tar --exclude="._*" -cf ../initrd.tar *
-	@echo "Initrd created."
+# ── ISO assembly ────────────────────────────────────────────────────────────
+src/iso_root/boot/moonos.elf: build/moonos.elf
+	cp $< $@
 
-$(ISO): $(KERNEL) $(BUILD)/initrd.tar limine.conf limine-setup
-	@rm -rf iso_root
-	@mkdir -p iso_root/EFI/BOOT
-	@cp $(KERNEL) iso_root/moonos.elf
-	@cp limine.conf iso_root/
-	@printf "    module_path: boot():/initrd.tar\n" >> iso_root/limine.conf
-	@cp $(BUILD)/initrd.tar iso_root/
-	@cp background.png iso_root/ 2>/dev/null || true
-	@cp limine/limine-bios.sys iso_root/
-	@cp limine/limine-bios-cd.bin iso_root/
-	@cp limine/limine-uefi-cd.bin iso_root/
-	@cp limine/BOOTX64.EFI iso_root/EFI/BOOT/
-	@cp limine/BOOTIA32.EFI iso_root/EFI/BOOT/
-	$(XORRISO) -as mkisofs -R -J -b limine-bios-cd.bin \
-	  -no-emul-boot -boot-load-size 4 -boot-info-table \
-	  --efi-boot limine-uefi-cd.bin \
-	  -efi-boot-part --efi-boot-image --protective-msdos-label \
-	  iso_root -o $(ISO)
-	./limine/limine bios-install $(ISO)
-	@echo "ISO ready: $(ISO)"
+src/iso_root/boot/background.png: src/background.png
+	cp $< $@
+	cp $< src/iso_root/background.png
 
-limine-setup:
-	@if [ ! -f limine/limine-bios.sys ]; then \
-	  git clone https://github.com/limine-bootloader/limine.git \
-	    --branch=v$(LIMINE_VER)-binary --depth=1 limine; \
-	fi
-	@if [ ! -f kernel/boot/limine.h ]; then \
-	  cp limine/limine.h kernel/boot/limine.h 2>/dev/null || true; \
-	fi
-	$(MAKE) -C limine
+src/iso_root/boot/limine/limine-uefi-cd.bin: $(LIMINE_DIR)/limine-uefi-cd.bin
+	cp $< src/iso_root/boot/limine/
 
-$(BUILD):
-	mkdir -p $(BUILD)
+src/iso_root/boot/limine/limine-bios-cd.bin: $(LIMINE_DIR)/limine-bios-cd.bin
+	cp $< src/iso_root/boot/limine/
 
-run: $(ISO)
-	qemu-system-x86_64 -m 4G -serial stdio -cdrom $(ISO) -boot d \
-	  -smp 2 -vga std \
-	  -global VGA.xres=1920 -global VGA.yres=1080
+src/iso_root/boot/limine/limine-bios.sys: $(LIMINE_DIR)/limine-bios.sys
+	cp $< src/iso_root/boot/limine/
+
+src/iso_root/EFI/BOOT/BOOTX64.EFI: $(LIMINE_DIR)/BOOTX64.EFI
+	cp $< src/iso_root/EFI/BOOT/
+
+LIMINE_BINS = src/iso_root/boot/limine/limine-uefi-cd.bin \
+              src/iso_root/boot/limine/limine-bios-cd.bin  \
+              src/iso_root/boot/limine/limine-bios.sys     \
+              src/iso_root/EFI/BOOT/BOOTX64.EFI
+
+$(LIMINE_DIR)/limine:
+	$(MAKE) -C $(LIMINE_DIR) limine
+
+$(ISO_MAIN): src/iso_root/boot/moonos.elf src/iso_root/boot/background.png $(LIMINE_BINS) $(LIMINE_DIR)/limine
+	mkdir -p dist
+	xorriso -as mkisofs \
+		-b boot/limine/limine-bios-cd.bin \
+		-no-emul-boot -boot-load-size 4 -boot-info-table \
+		--efi-boot boot/limine/limine-uefi-cd.bin \
+		-efi-boot-part --efi-boot-image \
+		--protective-msdos-label \
+		src/iso_root -o $(ISO_MAIN)
+	$(LIMINE_DIR)/limine bios-install $(ISO_MAIN)
+	cp $(ISO_MAIN) $(ISO_VER)
+	@echo "==> Built: $(ISO_MAIN)  ($(ISO_VER))"
 
 clean:
-	rm -rf $(BUILD) iso_root $(ISO)
-	$(MAKE) -C userland clean
+	rm -rf build dist/
+	rm -f src/iso_root/boot/moonos.elf src/iso_root/boot/background.png src/iso_root/background.png src/logo_data.h src/wallpaper_data.h src/cursor_data.h src/terminal_icon_data.h src/arcpad_icon_data.h src/settings_icon_data.h src/gui_font.h
+
+# ── QEMU quick test ─────────────────────────────────────────────────────────
+OVMF     := /usr/share/ovmf/OVMF.fd
+# X offset of second monitor — laptop R4s is 1920px wide so AUO starts at 1920
+MONITOR2 ?= 1920
+
+run: $(ISO_MAIN)
+	@if [ -f "$(OVMF)" ]; then \
+		SDL_VIDEO_WINDOW_POS=$(MONITOR2),0 \
+		qemu-system-x86_64 -cdrom $(ISO_MAIN) -m 512M -vga std \
+			-display sdl -full-screen \
+			-bios $(OVMF) -no-reboot; \
+	else \
+		SDL_VIDEO_WINDOW_POS=$(MONITOR2),0 \
+		qemu-system-x86_64 -cdrom $(ISO_MAIN) -m 512M -vga std \
+			-display sdl -full-screen \
+			-no-reboot; \
+	fi
