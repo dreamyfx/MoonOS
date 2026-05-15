@@ -1,0 +1,194 @@
+May26/
+├── build.sh
+├── Makefile
+├── moonos.txt
+├── build/
+│   ├── arcpad.o
+│   ├── ata.o
+│   ├── boot.o
+│   ├── commands.o
+│   ├── fb.o
+│   ├── font.o
+│   ├── gui.o
+│   ├── kernel.o
+│   ├── keyboard.o
+│   ├── moonos.elf
+│   ├── mouse.o
+│   ├── pci.o
+│   ├── progressbar.o
+│   ├── ramdisk.o
+│   ├── util.o
+│   ├── wallpaper.bin
+│   ├── wallpaper_embed.o
+│   ├── apps/
+│   │   ├── fscmds.o
+│   │   ├── misc.o
+│   │   ├── snake.o
+│   │   └── system.o
+│   └── net/
+│       ├── e1000.o
+│       ├── net.o
+│       └── rtl8168.o
+├── dist/
+│   ├── moonos.iso
+│   ├── moonos1.5.0.iso
+│   ├── moonos1.6.1.iso
+│   └── OldMoonOS.1-5-0.iso
+├── limine/
+│   ├── Makefile
+│   ├── limine.c
+│   ├── limine.h
+│   ├── limine (binary)
+│   ├── limine.exe
+│   ├── BOOTX64.EFI
+│   ├── BOOTIA32.EFI
+│   ├── BOOTAA64.EFI
+│   ├── BOOTRISCV64.EFI
+│   ├── BOOTLOONGARCH64.EFI
+│   ├── limine-bios-cd.bin
+│   ├── limine-bios-hdd.h
+│   ├── limine-bios-pxe.bin
+│   ├── limine-bios.sys
+│   ├── limine-uefi-cd.bin
+│   └── install-sh
+├── src/
+│   ├── arcpad.c
+│   ├── arcpad.h
+│   ├── arcpad_icon_data.h
+│   ├── ata.c
+│   ├── ata.h
+│   ├── background.png
+│   ├── boot.asm
+│   ├── commands.c
+│   ├── commands.h
+│   ├── cursor_data.h
+│   ├── fb.c
+│   ├── fb.h
+│   ├── font.c
+│   ├── font.h
+│   ├── gui.c
+│   ├── gui.h
+│   ├── gui_font.h
+│   ├── io.h
+│   ├── kernel.c
+│   ├── keyboard.c
+│   ├── keyboard.h
+│   ├── limine.h
+│   ├── linker.ld
+│   ├── logo.png
+│   ├── logo_data.h
+│   ├── mem.h
+│   ├── mouse.c
+│   ├── mouse.h
+│   ├── notification.h
+│   ├── pci.c
+│   ├── pci.h
+│   ├── progressbar.c
+│   ├── progressbar.h
+│   ├── progressbar_data.h
+│   ├── ramdisk.c
+│   ├── ramdisk.h
+│   ├── settings_icon_data.h
+│   ├── terminal_icon_data.h
+│   ├── util.c
+│   ├── util.h
+│   ├── wallpaper_data.h
+│   ├── wallpaper_embed.asm
+│   ├── apps/
+│   │   ├── apps.h
+│   │   ├── fscmds.c
+│   │   ├── misc.c
+│   │   ├── snake.c
+│   │   └── system.c
+│   ├── console/
+│   │   └── art/
+│   │       ├── progress.m
+│   │       ├── scalegear.c
+│   │       └── [progressbar PNG assets]
+│   ├── iso_root/
+│   │   ├── README
+│   │   ├── background.png
+│   │   ├── moonosalpha.png
+│   │   ├── moonosalpha@a.png
+│   │   ├── boot/
+│   │   │   ├── background.png
+│   │   │   ├── moonos.elf
+│   │   │   └── limine/
+│   │   │       ├── limine-bios-cd.bin
+│   │   │       ├── limine-bios.sys
+│   │   │       ├── limine-uefi-cd.bin
+│   │   │       └── limine.conf
+│   │   └── EFI/
+│   │       └── BOOT/
+│   │           └── BOOTX64.EFI
+│   ├── Library/
+│   │   ├── apps/
+│   │   │   ├── arcpad/
+│   │   │   │   └── ArcPad.png
+│   │   │   ├── settings/
+│   │   │   │   └── Settings.png
+│   │   │   └── terminal/
+│   │   │       └── Terminal.png
+│   │   ├── cursor/
+│   │   │   └── arrow.cur
+│   │   ├── fonts/
+│   │   │   └── SF-Pro-Display-Regular.otf
+│   │   └── wallpapers/
+│   │       ├── moonos.png
+│   │       └── moonosalpha.png
+│   └── net/
+│       ├── e1000.c
+│       ├── e1000.h
+│       ├── EthernetFrameHeader.h
+│       ├── EtherType.h
+│       ├── ICMP.h
+│       ├── ICMPv6.h
+│       ├── LocalSocket.cpp
+│       ├── LocalSocket.h
+│       ├── LoopbackAdapter.cpp
+│       ├── LoopbackAdapter.h
+│       ├── net.c
+│       ├── net.h
+│       ├── NetworkAdapter.cpp
+│       ├── NetworkAdapter.h
+│       ├── NetworkingManagement.cpp
+│       ├── NetworkingManagement.h
+│       ├── NetworkTask.cpp
+│       ├── NetworkTask.h
+│       ├── Routing.cpp
+│       ├── Routing.h
+│       ├── rtl8168.c
+│       ├── rtl8168.h
+│       ├── Socket.cpp
+│       ├── Socket.h
+│       ├── TCP.h
+│       ├── TCPSocket.cpp
+│       ├── TCPSocket.h
+│       ├── UDP.h
+│       ├── UDPSocket.cpp
+│       ├── UDPSocket.h
+│       ├── Intel/
+│       │   ├── E1000ENetworkAdapter.cpp
+│       │   ├── E1000ENetworkAdapter.h
+│       │   ├── E1000NetworkAdapter.cpp
+│       │   └── E1000NetworkAdapter.h
+│       ├── IP/
+│       │   ├── ARP.h
+│       │   ├── IP.h
+│       │   ├── IPv4.h
+│       │   ├── IPv6.h
+│       │   ├── Socket.cpp
+│       │   ├── Socket.h
+│       │   └── SocketTuple.h
+│       ├── Realtek/
+│       │   ├── RTL8168NetworkAdapter.cpp
+│       │   └── RTL8168NetworkAdapter.h
+│       └── VirtIO/
+│           ├── VirtIONetworkAdapter.cpp
+│           └── VirtIONetworkAdapter.h
+└── tools/
+    ├── cur2c.py
+    ├── otf2bitmapfont.py
+    ├── png2bar.py
+    ├── png2bin.py
+    └── png2c.py
